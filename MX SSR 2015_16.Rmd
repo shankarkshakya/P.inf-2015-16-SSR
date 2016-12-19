@@ -1,0 +1,133 @@
+---
+title: "P infestans SSR 2015/16 MX"
+author: "Shankar K Shakya"
+date: "December 19, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+rm(list = ls())
+library(poppr)
+
+P.inf <- read.genalex("all_2015_mx.csv", ploidy = 4)
+P.inf
+
+P.inf <- missingno(P.inf, type = "loci", cutoff = 0.05)
+P.inf
+
+ploidy_tab <- info_table(P.inf, type = "ploidy")
+
+mat_sum <- rowSums(ploidy_tab > 2, na.rm = TRUE)
+
+diploid_pinf <- P.inf[mat_sum == 0]
+diploid_pinf
+
+##recoding the ploidy
+
+diploid_pinf <- recode_polyploids(diploid_pinf, newploidy = 2)
+
+mlg.table(diploid_pinf)
+
+
+```
+
+
+
+###### TEST FOR LINKAGE DISEQUILIBRIUM
+
+```{r}
+
+
+ia_Pinf <- poppr(diploid_pinf, clonecorrect = TRUE, strata = ~Pop, sample = 999)
+ia_Pinf
+# ia_Pinf <- last_plot()
+# 
+# ia_Pinf <- ia_Pinf + theme(text = element_text(size = rel(5))) +
+#   labs(title = "Standardized index of association") + 
+#   theme(plot.title = element_text(size = 35))
+# 
+# ia_Pinf
+
+
+```
+
+## HWE for diploid only
+```{r}
+
+library(pegas)
+hwe_per_pop <- seppop(diploid_pinf) %>% lapply(hw.test, B = 0)
+per_pop_mat <- sapply(hwe_per_pop, "[", i = TRUE, j = 3)
+alpha <- 0.05
+per_pop_mat[per_pop_mat > alpha] <- 1
+
+library(lattice)
+
+
+hwe_plot <- levelplot(per_pop_mat, xlab = "Locus", ylab = "Population")
+hwe_plot
+
+
+```
+
+
+## allelic richness
+
+```{r}
+
+library(strataG)
+diploid_pinf.gtypes <- genind2gtypes(diploid_pinf)
+allelicRichness(diploid_pinf.gtypes)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## STRUCTURE
+
+```{r}
+
+Sys.setenv(PATH = paste("C:/Program Files (x86)/Structure2.3.4/bin", Sys.getenv("PATH"), sep = ";"))
+
+Sys.setenv(PATH = paste("C:/Users/Shankar/Downloads/CLUMPP_Windows.1.1.2/", Sys.getenv("PATH"), sep = ";"))
+
+sr <- structureRun(genind2gtypes(diploid_pinf), k.range  = 1:5, burnin = 10, num.k.rep = 1, noadmix = F)
+evno <- evanno(sr)
+
+qmat <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 10000)
+
+structurePlot(qmat)
+
+
+```
+
+
+
+
+
+
+
