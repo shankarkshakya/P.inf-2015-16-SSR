@@ -90,23 +90,6 @@ allelicRichness(diploid_pinf.gtypes)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## STRUCTURE
 
 ```{r}
