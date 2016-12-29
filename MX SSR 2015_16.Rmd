@@ -65,7 +65,6 @@ unbiased <- poppr(diploid_pinf, uSimp = uSimp)
 ```{r}
 
 
-
 ia_Pinf <- poppr(diploid_pinf, clonecorrect = TRUE, strata = ~Pop, sample = 999)
 ia_Pinf
 write.csv(ia_Pinf, "ia_Pinf.csv")
@@ -257,5 +256,60 @@ ggheatmap
 ```
 
 
+
+
+```{r}
+
+# repeat_length <- c(2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2)
+# dist_mat <- bruvo.dist(diploid_pinf, replen = repeat_length)
+# tree_nj <- bruvo.boot(diploid_pinf, replen = repeat_length, 
+#                       sample = 1000, cutoff = 70, tree = "nj")
+
+
+
+```
+
+##DAPC
+
+```{r}
+
+set.seed(999)
+P.infx <- xvalDapc(tab(diploid_pinf, NA.method = "mean"), pop(diploid_pinf))
+P.infx
+
+dapc1 <- dapc(P.inf, n.pca = 25, n.da = 5)
+dapc1
+
+myCol <- c("darkblue","purple","red","orange", "darkgreen")
+
+scatter.dapc(dapc1, posi.da="topleft", bg="white",
+             pch=15:19, cstar=0, col=myCol, 
+             scree.pca=F, clabel = TRUE, legend = TRUE,
+             posi.pca="bottomleft")
+
+
+set.seed(999)
+P.infx <- xvalDapc(tab(P.inf, NA.method = "mean"), pop(P.inf), 
+                   n.pca = 20:30, n.rep = 100, 
+                   parallel = "multicore", ncpus = 4L)
+
+
+scatter(P.infx$DAPC, col=color_pal, clabel = FALSE, scree.pca = TRUE, pch=15:19,
+        posi.pca = "bottomleft", posi.leg = "topright", scree.da = FALSE, legend = TRUE, 
+        cleg = 1.65, inset.solid = 1, xax = 1, yax = 2, cex.lab = 2, cex = 1.5)
+
+compoplot(P.infx$DAPC, lab ="")
+ggcompoplot(P.infx$DAPC, P.inf, pal = color_pal) + 
+  theme(axis.text.x = element_blank()) +
+  labs(title = "compo plot") +
+  theme(plot.title = element_text(size = 45 )) +
+  theme(legend.text = element_text(size = 20)) +
+  theme(legend.title = element_text(size = 23)) +
+  theme(axis.text.y = element_text(size = 12, face = "bold")) +
+  theme(axis.title.x = element_text(size = 18, face = "bold")) +
+  theme(axis.title.y = element_text(size = 18, face = "bold")) 
+  
+
+```
 
 

@@ -1,0 +1,178 @@
+---
+title: "P infestans genetic diversity in Mexico 2015/16"
+author: "Shankar K Shakya"
+date: "October 10, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", fig.width = 10, fig.height = 12)
+```
+
+
+#### Phytophthora infestans genetic diversity
+
+P infestans samples were collected in 2015 and 2016 in Mexico from different potato growing regions including Toluca valley. Isolation was made in Mexico and cultures were shipped to Grunwald Lab. We performed DNA extraction and microsatellite genotyping. 
+
+#### Analysis
+
+```{r, fig.height=12, fig.width=10, message=FALSE, warning=FALSE}
+
+rm(list=ls())
+
+library(poppr)
+P.inf <- read.genalex("all_2015_mx.csv", ploidy = 4)
+P.inf
+
+
+```
+
+
+
+##### Missing data
+
+```{r}
+missing_data <- info_table(P.inf, type = "missing", plot = TRUE, returnplot = T)
+
+# missing_data <- last_plot()
+
+# missing_data <- missing_data + 
+#                 labs(title = "Per-cent missing data per locus and population") + 
+#                 theme(plot.title = element_text(size = 25)) +
+#                 theme(legend.text = element_text(size = 18)) +
+#                 theme(legend.title = element_text(size = 22)) +
+#                 theme(axis.text.x = element_text(size = 18)) +
+#                 theme(axis.text.y = element_text(size = 18)) +
+#                 theme(axis.title.x = element_text(size = 22)) +
+#                 theme(axis.title.y = element_text(size = 22))
+
+#missing_data
+```
+
+
+##### Because D13 locus had very high percentage of missing data, we got rid of that locus and clone corrected the data.
+
+
+```{r}
+
+P.inf <- missingno(P.inf, type = "loci", cutoff = 0.05)
+P.inf
+
+cc_P.inf <- clonecorrect(P.inf)
+cc_P.inf
+
+```
+
+
+#### Ploidy
+
+```{r}
+
+cc_ptab <- info_table(cc_P.inf, type = "ploidy", 
+                      plot = TRUE, percent = T, returnplot = T)
+
+library(RColorBrewer)
+
+color_pal <- brewer.pal(nPop(cc_P.inf), "Dark2") %>% setNames(popNames(cc_P.inf))
+my_col <- color_pal[pop(cc_P.inf)]
+head(my_col)
+
+# cc_tab <- last_plot()
+# 
+#   cc_tab + 
+#       labs(title = "Observed ploidy (clone corrected)") + 
+#       theme(plot.title = element_text(size = 35)) +
+#       theme(legend.text = element_text(size = 18)) +
+#       theme(legend.title = element_text(size = 20)) + 
+#       theme(axis.text.x = element_text(size = 18)) +
+#       theme(axis.text.y = element_text(size = 10, color = rev(my_col))) +
+#       theme(axis.title.x = element_text(size = 22)) +
+#       theme(axis.title.y = element_text(size = 32))
+
+          
+
+
+```
+
+#### Multi-locus genotype
+
+```{r}
+
+mlg_tab <- mlg.table(P.inf)
+
+# mlg_tab <- last_plot()
+# mlg_tab <- mlg_tab + theme(text = element_text(size = rel(6))) +
+#   labs(title = "Multi-locus Genotype") + 
+#   theme(plot.title = element_text(size = 40)) +
+#   theme(axis.text.x = element_blank())
+# mlg_tab
+
+```
+
+
+#### Genetic diversity
+
+```{r}
+
+diversity <- diversity_stats(mlg_tab)
+diversity
+
+diversity <- diversity_ci(mlg_tab, n = 100, raw = FALSE)
+
+# diversity <- last_plot()
+# diversity + theme(text = element_text(size = rel(5))) +
+#   labs(title = "Diversity indices") +
+#   theme(plot.title = element_text(size = 45)) +
+#   theme(legend.text = element_text(size = 22))
+
+
+## Diversity stats without boxplots.
+
+library(reshape2)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# diversity <- diversity_ci(P.inf, n = 100L)
+# CI <- melt(diversity[[3]]) %>% spread(CI, value) %>% rename(lb = `2.5 %`, ub = `97.5 %`)
+# obs <- melt(diversity[[1]]) %>% rename(observed = value)
+# 
+# dat <- merge(CI, obs)
+# dat
+# 
+# ggplot(dat, aes(x = Pop, y = observed, color = Pop)) +
+#   geom_point(size = 5) +
+#   geom_errorbar(aes(ymax = ub, ymin = lb), lwd = 1.25) +
+#   facet_wrap(~Index, ncol = 2, scale = "free_y") +
+#   theme(axis.text.x = element_text(hjust = 1, vjust = 0.5, angle = 90)) +
+#   theme(text = element_text(size = rel(5))) +
+#   labs(title = "Simpson diversity index") +
+#   theme(plot.title = element_text(size = 45)) +
+#   theme(legend.text = element_text(size = 22)) +
+#   labs(x = "Population", y = "Observed value")
+  
+
+## plotting only simpson diversity index
+# sim_div <- filter(dat, Index == "lambda")
+# 
+# ggplot(sim_div, aes(x = Pop, y = observed, color = Pop)) +
+#   geom_point(size = 5) +
+#   geom_errorbar(aes(ymax = ub, ymin = lb), lwd = 1.25) +
+#   #facet_wrap(~Index, ncol = 2, scale = "free_y") +
+#   theme(axis.text.x = element_text(hjust = 1, vjust = 0.5, angle = 90, size = 15)) +
+#   theme(text = element_text(size = rel(5))) +
+#   labs(title = "Simpson's diversity index") +
+#   theme(plot.title = element_text(size = 35)) +
+#   theme(legend.text = element_text(size = 22)) +
+#   labs(x = "Population", y = "Observed value") 
+
+
+```
+
+
+
+
+
+
+
+
