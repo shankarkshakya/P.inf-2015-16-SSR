@@ -35,6 +35,27 @@ diploid_pinf <- recode_polyploids(diploid_pinf, newploidy = 2)
 mlg.table(diploid_pinf)
 
 
+
+
+# Corrected simpson diversity index
+uSimp <- function(x){
+  lambda <- vegan::diversity(x, "simpson")
+  x <- drop(as.matrix(x))
+  if (length(dim(x)) > 1){
+    N <- rowSums(x)
+  } else {
+    N <- sum(x)
+  }
+  return((N/(N-1))*lambda)
+}
+
+unbiased <- poppr(diploid_pinf, uSimp = uSimp)
+
+#write.csv(unbiased, "summary_by_pop.csv", quote = FALSE)
+
+
+
+
 ```
 
 
@@ -44,8 +65,10 @@ mlg.table(diploid_pinf)
 ```{r}
 
 
+
 ia_Pinf <- poppr(diploid_pinf, clonecorrect = TRUE, strata = ~Pop, sample = 999)
 ia_Pinf
+write.csv(ia_Pinf, "ia_Pinf.csv")
 # ia_Pinf <- last_plot()
 # 
 # ia_Pinf <- ia_Pinf + theme(text = element_text(size = rel(5))) +
@@ -53,6 +76,10 @@ ia_Pinf
 #   theme(plot.title = element_text(size = 35))
 # 
 # ia_Pinf
+
+
+diploid_pinf_no_sangeronimo2016 <- popsub(diploid_pinf, blacklist = "San Gerónimo_2016")
+poppr(diploid_pinf_no_sangeronimo2016, clonecorrect = TRUE, strata = ~Pop, sample = 999)
 
 
 ```
@@ -90,7 +117,7 @@ allelicRichness(diploid_pinf.gtypes)
 # rowSums(allleic_rich$all.richness) 
 # rowSums(allleic_rich$pop.sizes)
 
-
+summarizeLoci(diploid_pinf.gtypes)
 
 ```
 
@@ -106,13 +133,16 @@ Sys.setenv(PATH = paste("C:/Users/Shankar/Downloads/CLUMPP_Windows.1.1.2/", Sys.
 
 diploid_pinf_cc <- clonecorrect(diploid_pinf)
 
-sr <- structureRun(genind2gtypes(diploid_pinf), k.range  = 1:5, burnin = 10, num.k.rep = 1, noadmix = F)
+library(strataG)
+sr <- structureRun(genind2gtypes(diploid_pinf), k.range  = 1:5, burnin = 30000, num.k.rep = 10, noadmix = FALSE, numreps = 100000)
+save(sr, file = "diploid_pinf_str.RData")
 evno <- evanno(sr)
 
-qmat <- clumpp(sr, k = 3, sim.stat = "g.prime", repeats = 10000)
+qmat <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 10)
 
-structurePlot(qmat)
+t <- structurePlot(qmat)
 
+# get("diploid_pinf_str.RData")
 
 ```
 
@@ -146,8 +176,8 @@ pop_diff_test <- popStructTest(diploid_pinf.gtypes,  stats = "gst")
 pop_diff_test <- pairwiseTest(diploid_pinf.gtypes, stats = "gst")
 
 
-#x <- pop_diff_test$pairwise$pair.mat$Gst
-x <- pop_diff_test$pair.mat$Gst
+x <- pop_diff_test$pairwise$pair.mat$Gst
+write.csv(x, "Pairwise_GST.csv")
 
 
 x[upper.tri(x)] <- t(x)[upper.tri(x)]
@@ -155,6 +185,32 @@ x[upper.tri(x)] <- t(x)[upper.tri(x)]
 
 x[is.na(x)] <- 0
 x
+
+geo <- x
+geo[upper.tri(geo)] <- NA
+
+geo
+#write.table(geo, "geo.txt")
+Dgen <- as.dist(x)
+Dgeo <- as.dist(geo)
+x <- read.table("geo.txt")
+
+# Dgeo <- geo[grep("2015", rownames(geo)), grep("2015", colnames(geo))]
+# 
+# Dgen <- x[grep("2015", rownames(x)), grep("2015", colnames(x))]
+
+ibd <- mantel.randtest(as.dist(Dgen), as.dist(Dgeo))
+ibd
+plot(ibd)
+
+library(MASS)
+dens <- kde2d(Dgeo,Dgen, n=300)
+myPal <- colorRampPalette(c("white","blue","gold", "orange", "red"))
+plot(Dgeo, Dgen, pch=20,cex=.5)
+image(dens, col=transp(myPal(300),.7), add=TRUE)
+abline(lm(Dgen~Dgeo))
+title("Isolation by distance plot")
+
 
 library(heatmaply)
 my_heatmap <- heatmaply(x, Rowv = FALSE, Colv = FALSE)  %>% layout(margin = list(l = 120, b = 120))
@@ -167,9 +223,39 @@ heatmapr(x, scale = "column")
 
 
 
+## analysis without sangeronimo2016
+diploid_pinf_no_sangeronimo2016
+pairwise_gst <- pairwiseTest(genind2gtypes(clonecorrect(diploid_pinf_no_sangeronimo2016)), stats = "gst", nrep = 10000)
+
+#write.csv(pairwise_gst$pair.mat, "Pairwise GST except sangeronimo2016.csv")
+
+gst_mat <- pairwise_gst$pair.mat$Gst
+
+gst_mat[upper.tri(gst_mat)] <- t(gst_mat)[upper.tri(gst_mat)]
+
+gst_mat
+
+
+gst_mat[is.na(gst_mat)] <- 0
+gst_mat
+
+
+gst_mat
+library(reshape2)
+gst_mat[upper.tri(gst_mat)] <- NA
+lower_tri <- melt(gst_mat, na.rm = TRUE)
+
+ggheatmap <- ggplot(lower_tri, aes(x = Var1, y = Var2, fill = value)) + geom_tile(color = "white") + 
+  scale_fill_gradient(low = "green", high = "red" , space = "Lab", name="Pairwise GST") + theme_minimal() + 
+   theme(axis.text.x = element_text(angle = 90, vjust = 1, size = 12, hjust = 1)) + coord_fixed() +
+  labs(x = "Population", y = "Population")
+
+ggheatmap
+
 
 
 ```
+
 
 
 
