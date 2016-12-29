@@ -81,12 +81,18 @@ hwe_plot
 ```{r}
 
 library(strataG)
-diploid_pinf.gtypes <- genind2gtypes(diploid_pinf)
+diploid_pinf.gtypes <- genind2gtypes(clonecorrect(diploid_pinf))
 allelicRichness(diploid_pinf.gtypes)
+
+# library(PopGenReport)
+# allleic_rich <- allel.rich(diploid_pinf_cc)
+# 
+# rowSums(allleic_rich$all.richness) 
+# rowSums(allleic_rich$pop.sizes)
+
 
 
 ```
-
 
 
 
@@ -98,10 +104,12 @@ Sys.setenv(PATH = paste("C:/Program Files (x86)/Structure2.3.4/bin", Sys.getenv(
 
 Sys.setenv(PATH = paste("C:/Users/Shankar/Downloads/CLUMPP_Windows.1.1.2/", Sys.getenv("PATH"), sep = ";"))
 
+diploid_pinf_cc <- clonecorrect(diploid_pinf)
+
 sr <- structureRun(genind2gtypes(diploid_pinf), k.range  = 1:5, burnin = 10, num.k.rep = 1, noadmix = F)
 evno <- evanno(sr)
 
-qmat <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 10000)
+qmat <- clumpp(sr, k = 3, sim.stat = "g.prime", repeats = 10000)
 
 structurePlot(qmat)
 
@@ -109,8 +117,59 @@ structurePlot(qmat)
 ```
 
 
+## AMOVA
+```{r}
+amv <- poppr.amova(diploid_pinf, 
+                   hier = ~Pop, 
+                   clonecorrect = TRUE, 
+                   dist = NULL)
+
+amv
 
 
+set.seed(15)
+y <- randtest(amv, nrepet = 999)
+class(y)
+plot(y)
+
+```
+
+
+## Population structure test
+
+```{r}
+
+
+pop_diff_test <- popStructTest(diploid_pinf.gtypes,  stats = "gst")
+                               #stats = c("gst.prime", "fst.prime", "gst", "gst.dbl.prime"))
+
+pop_diff_test <- pairwiseTest(diploid_pinf.gtypes, stats = "gst")
+
+
+#x <- pop_diff_test$pairwise$pair.mat$Gst
+x <- pop_diff_test$pair.mat$Gst
+
+
+x[upper.tri(x)] <- t(x)[upper.tri(x)]
+
+
+x[is.na(x)] <- 0
+x
+
+library(heatmaply)
+my_heatmap <- heatmaply(x, Rowv = FALSE, Colv = FALSE)  %>% layout(margin = list(l = 120, b = 120))
+
+my_heatmap
+
+class(my_heatmap)
+
+heatmapr(x, scale = "column")
+
+
+
+
+
+```
 
 
 
