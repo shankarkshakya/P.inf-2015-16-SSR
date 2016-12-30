@@ -133,15 +133,28 @@ Sys.setenv(PATH = paste("C:/Users/Shankar/Downloads/CLUMPP_Windows.1.1.2/", Sys.
 diploid_pinf_cc <- clonecorrect(diploid_pinf)
 
 library(strataG)
-sr <- structureRun(genind2gtypes(diploid_pinf), k.range  = 1:5, burnin = 30000, num.k.rep = 10, noadmix = FALSE, numreps = 100000)
-save(sr, file = "diploid_pinf_str.RData")
-evno <- evanno(sr)
 
-qmat <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 10)
+sr <- structureRun(genind2gtypes(diploid_pinf), k.range  = 1:8, burnin = 20000, num.k.rep = 10, noadmix = FALSE, numreps = 100000)
 
-t <- structurePlot(qmat)
+#save(sr, file = "diploid_pinf_str.RData")
 
-# get("diploid_pinf_str.RData")
+evno <- evanno(sr, plot = T)
+
+qmat2 <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 10000)
+
+t <- structurePlot(qmat2, col = c("orange", "blue"))
+
+t <-   t + theme_minimal() +  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    theme(axis.text = element_text(size =12))
+    
+  
+t
+
+
+# x <- load("diploid_pinf_str.RData")
+# y <- get(x)
+
+
 
 ```
 
@@ -312,4 +325,56 @@ ggcompoplot(P.infx$DAPC, P.inf, pal = color_pal) +
 
 ```
 
+
+
+## MSN
+
+
+```{r}
+
+diploid_pinf
+diploid_pinf_cc <- clonecorrect(diploid_pinf)
+
+min_span_net <- bruvo.msn(diploid_pinf_cc, replen = c(2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2), add = TRUE, loss = TRUE, showplot = FALSE, include.ties = TRUE)
+
+set.seed(75)
+plot_poppr_msn(diploid_pinf_cc,
+               min_span_net,
+               inds = "NONE",
+               mlg = FALSE,
+               gadj = 9,
+               nodebase = 1.15,
+               palette = rainbow,
+               cutoff = NULL,
+               quantiles = FALSE,
+               beforecut = TRUE,
+               layfun = igraph::layout.auto)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
 
