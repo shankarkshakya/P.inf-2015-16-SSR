@@ -1,0 +1,70 @@
+---
+title: "Geographic info MX"
+author: "Shankar K Shakya"
+date: "December 29, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+location <- read.csv("Dgeo_MX.csv", header = TRUE)
+
+library(ggmap)
+
+
+mapImage <- qmplot(Longitude, Latitude, data = location, colour = I('red'), size = I(3), darken = .3)
+
+
+qplot(Longitude, Latitude, data = location, colour = I('red'), size = I(3), darken = .3, geom = "")
+
+
+geocode("Mexico")
+
+qmplot(geocode("Mexico"))
+
+qmplot()
+
+mx <- get_map(location = "Mexico", zoom = 6)
+
+mymap <- ggmap(mx) + geom_point(data = location, aes(x = Longitude, y = Latitude), size = 3, color = "red")
+
+mymap
+
+
+get_map(Longitude, Latitude, data = location), colour = I('red'), size = I(3), darken = .3, geom = "polygon"
+
+
+```
+
+
+
+```{r}
+library(maptools)
+
+mx <- readShapePoly("mexstates/mexstates.shp")
+
+plot(mx)
+
+str(mx)
+
+mx@data$ADMIN_NAME
+
+spplot(mx, "ADMIN_NAME")
+
+spplot(mx , zcol = "ADMIN_NAME")
+
+
+
+
+
+```
+
+
+
+
+
+
