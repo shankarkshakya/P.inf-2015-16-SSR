@@ -32,9 +32,7 @@ diploid_pinf
 
 diploid_pinf <- recode_polyploids(diploid_pinf, newploidy = 2)
 
-mlg.table(diploid_pinf)
-
-
+#mlg.table(diploid_pinf)
 
 
 # Corrected simpson diversity index
@@ -118,6 +116,23 @@ allelicRichness(diploid_pinf.gtypes)
 
 summarizeLoci(diploid_pinf.gtypes)
 
+
+
+#Allelic diversity for each locus and each population
+locus_table(diploid_pinf, pop = "Chapingo_2015")
+locus_table(cc_P.inf, pop = "San Gerónimo")
+locus_table(cc_P.inf, pop = "Juchitepec")
+locus_table(cc_P.inf, pop = "Toluca")
+locus_table(cc_P.inf, pop = "Tlaxcala")
+
+
+
+
+
+
+
+
+
 ```
 
 
@@ -180,79 +195,56 @@ plot(y)
 ## Population structure test
 
 ```{r}
+library(strataG)
+diploid_pinf_no_sangeronimo2016 <- popsub(diploid_pinf, blacklist = "San Gerónimo_2016")
+
+diploid_pinf_no_sangeronimo2016
+
+pairwise_gst <- pairwiseTest(genind2gtypes(clonecorrect(diploid_pinf_no_sangeronimo2016)), stats = "gst", nrep = 10000)
+
+gst_mat <- pairwise_gst$pair.mat$Gst
+
+gst_mat[upper.tri(gst_mat)] <- NA
+
+gst_mat <- as.dist(gst_mat)
 
 
-pop_diff_test <- popStructTest(diploid_pinf.gtypes,  stats = "gst")
-                               #stats = c("gst.prime", "fst.prime", "gst", "gst.dbl.prime"))
+geodist <- read.csv("geo.csv", header = TRUE, check.names = FALSE)
 
-pop_diff_test <- pairwiseTest(diploid_pinf.gtypes, stats = "gst")
+geo_mat <- as.matrix(geodist[,-1])
+row.names(geo_mat) <- geodist[, 1]
+geodist_mat <- as.dist(geo_mat)
 
-
-x <- pop_diff_test$pairwise$pair.mat$Gst
-write.csv(x, "Pairwise_GST.csv")
-
-
-x[upper.tri(x)] <- t(x)[upper.tri(x)]
-
-
-x[is.na(x)] <- 0
-x
-
-geo <- x
-geo[upper.tri(geo)] <- NA
-
-geo
-#write.table(geo, "geo.txt")
-Dgen <- as.dist(x)
-Dgeo <- as.dist(geo)
-x <- read.table("geo.txt")
-
-# Dgeo <- geo[grep("2015", rownames(geo)), grep("2015", colnames(geo))]
-# 
-# Dgen <- x[grep("2015", rownames(x)), grep("2015", colnames(x))]
-
-ibd <- mantel.randtest(as.dist(Dgen), as.dist(Dgeo))
-ibd
+ibd <- mantel.randtest(gst_mat, geodist_mat)
 plot(ibd)
 
 library(MASS)
-dens <- kde2d(Dgeo,Dgen, n=300)
+dens <- kde2d(geodist_mat,gst_mat, n=300)
 myPal <- colorRampPalette(c("white","blue","gold", "orange", "red"))
-plot(Dgeo, Dgen, pch=20,cex=.5)
+plot(geodist_mat, gst_mat, pch=20,cex=1.5)
 image(dens, col=transp(myPal(300),.7), add=TRUE)
-abline(lm(Dgen~Dgeo))
+abline(lm(gst_mat~geodist_mat))
 title("Isolation by distance plot")
 
-
-library(heatmaply)
-my_heatmap <- heatmaply(x, Rowv = FALSE, Colv = FALSE)  %>% layout(margin = list(l = 120, b = 120))
-
-my_heatmap
-
-class(my_heatmap)
-
-heatmapr(x, scale = "column")
+```
 
 
+### Pairwise GST values without San Geronimo 2016
+```{r}
 
-## analysis without sangeronimo2016
+diploid_pinf_no_sangeronimo2016 <- popsub(diploid_pinf, blacklist = "San Gerónimo_2016")
+
 diploid_pinf_no_sangeronimo2016
+
 pairwise_gst <- pairwiseTest(genind2gtypes(clonecorrect(diploid_pinf_no_sangeronimo2016)), stats = "gst", nrep = 10000)
 
 #write.csv(pairwise_gst$pair.mat, "Pairwise GST except sangeronimo2016.csv")
 
 gst_mat <- pairwise_gst$pair.mat$Gst
-
 gst_mat[upper.tri(gst_mat)] <- t(gst_mat)[upper.tri(gst_mat)]
 
-gst_mat
-
-
 gst_mat[is.na(gst_mat)] <- 0
-gst_mat
 
-
-gst_mat
 library(reshape2)
 gst_mat[upper.tri(gst_mat)] <- NA
 lower_tri <- melt(gst_mat, na.rm = TRUE)
@@ -260,10 +252,11 @@ lower_tri <- melt(gst_mat, na.rm = TRUE)
 ggheatmap <- ggplot(lower_tri, aes(x = Var1, y = Var2, fill = value)) + geom_tile(color = "white") + 
   scale_fill_gradient(low = "green", high = "red" , space = "Lab", name="Pairwise GST") + theme_minimal() + 
    theme(axis.text.x = element_text(angle = 90, vjust = 1, size = 12, hjust = 1)) + coord_fixed() +
-  labs(x = "Population", y = "Population")
+  labs(x = "Population", y = "Population") +
+  theme(axis.text.y = element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12))
 
 ggheatmap
-
 
 
 ```
@@ -282,7 +275,7 @@ ggheatmap
 
 ```
 
-##DAPC
+## Discriminant Analysis of Principal Components
 
 ```{r}
 
@@ -290,44 +283,38 @@ set.seed(999)
 P.infx <- xvalDapc(tab(diploid_pinf, NA.method = "mean"), pop(diploid_pinf))
 P.infx
 
-dapc1 <- dapc(P.inf, n.pca = 25, n.da = 5)
-dapc1
-
-myCol <- c("darkblue","purple","red","orange", "darkgreen")
-
-scatter.dapc(dapc1, posi.da="topleft", bg="white",
-             pch=15:19, cstar=0, col=myCol, 
-             scree.pca=F, clabel = TRUE, legend = TRUE,
-             posi.pca="bottomleft")
-
 
 set.seed(999)
-P.infx <- xvalDapc(tab(P.inf, NA.method = "mean"), pop(P.inf), 
-                   n.pca = 20:30, n.rep = 100, 
+P.infx <- xvalDapc(tab(diploid_pinf, NA.method = "mean"), pop(diploid_pinf),
+                   n.pca = 30:40,  n.rep = 100, 
                    parallel = "multicore", ncpus = 4L)
 
 
-scatter(P.infx$DAPC, col=color_pal, clabel = FALSE, scree.pca = TRUE, pch=15:19,
-        posi.pca = "bottomleft", posi.leg = "topright", scree.da = FALSE, legend = TRUE, 
-        cleg = 1.65, inset.solid = 1, xax = 1, yax = 2, cex.lab = 2, cex = 1.5)
+library(RColorBrewer)
 
-compoplot(P.infx$DAPC, lab ="")
-ggcompoplot(P.infx$DAPC, P.inf, pal = color_pal) + 
-  theme(axis.text.x = element_blank()) +
-  labs(title = "compo plot") +
-  theme(plot.title = element_text(size = 45 )) +
-  theme(legend.text = element_text(size = 20)) +
-  theme(legend.title = element_text(size = 23)) +
-  theme(axis.text.y = element_text(size = 12, face = "bold")) +
-  theme(axis.title.x = element_text(size = 18, face = "bold")) +
-  theme(axis.title.y = element_text(size = 18, face = "bold")) 
-  
+myCol <- brewer.pal(nPop(diploid_pinf), "Dark2") %>% setNames(popNames(diploid_pinf))
+
+scatter(P.infx$DAPC, col=myCol, clabel = 0.75, pch=15:18, scree.pca = TRUE, scree.da = FALSE, 
+        posi.pca = "bottomright", posi.leg = "topright", legend = TRUE, 
+        cleg = 0.9, inset.solid = 1, xax = 1, yax = 2, cex.lab = 1, cex = 1.5, solid = 1, cstar = 0)
+
+
+# ggcompoplot(P.infx$DAPC, diploid_pinf, pal = myCol) +
+#   theme(axis.text.x = element_blank()) +
+#   labs(title = "compo plot") +
+#   theme(plot.title = element_text(size = 45 )) +
+#   theme(legend.text = element_text(size = 20)) +
+#   theme(legend.title = element_text(size = 23)) +
+#   theme(axis.text.y = element_text(size = 12, face = "bold")) +
+#   theme(axis.title.x = element_text(size = 18, face = "bold")) +
+#   theme(axis.title.y = element_text(size = 18, face = "bold"))
+#   
 
 ```
 
 
 
-## MSN
+## Minimum Spanning Network
 
 
 ```{r}
@@ -337,7 +324,7 @@ diploid_pinf_cc <- clonecorrect(diploid_pinf)
 
 min_span_net <- bruvo.msn(diploid_pinf_cc, replen = c(2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2), add = TRUE, loss = TRUE, showplot = FALSE, include.ties = TRUE)
 
-set.seed(75)
+set.seed(999)
 plot_poppr_msn(diploid_pinf_cc,
                min_span_net,
                inds = "NONE",
@@ -349,30 +336,6 @@ plot_poppr_msn(diploid_pinf_cc,
                quantiles = FALSE,
                beforecut = TRUE,
                layfun = igraph::layout.auto)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
