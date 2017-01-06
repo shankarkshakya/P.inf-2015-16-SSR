@@ -1,4 +1,3 @@
-Inset map in ggplot
 
 library(ggplot2)
 library(raster)
