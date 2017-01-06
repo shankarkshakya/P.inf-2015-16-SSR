@@ -19,8 +19,6 @@ library(ggmap)
 mapImage <- qmplot(Longitude, Latitude, data = location, colour = I('red'), size = I(3), darken = .3)
 
 
-qplot(Longitude, Latitude, data = location, colour = I('red'), size = I(3), darken = .3, geom = "")
-
 
 geocode("Mexico")
 
@@ -35,8 +33,6 @@ mymap <- ggmap(mx) + geom_point(data = location, aes(x = Longitude, y = Latitude
 mymap
 
 
-get_map(Longitude, Latitude, data = location), colour = I('red'), size = I(3), darken = .3, geom = "polygon"
-
 
 ```
 
@@ -46,16 +42,36 @@ get_map(Longitude, Latitude, data = location), colour = I('red'), size = I(3), d
 library(maptools)
 
 mx <- readShapePoly("mexstates/mexstates.shp")
+class(mx)
 
-plot(mx)
-
-str(mx)
-
-mx@data$ADMIN_NAME
-
+head(mx@data)
 spplot(mx, "ADMIN_NAME")
 
-spplot(mx , zcol = "ADMIN_NAME")
+new <- mx[mx@data$ADMIN_NAME == "Mexico", ]
+plot(new)
+class(new)
+
+new <- mx[grep("Mexico|Tlaxcala|Michoacan", mx@data$ADMIN_NAME),]
+plot(new)
+
+
+
+spplot(new , zcol = "GMI_ADMIN")
+
+
+
+
+
+
+sub <- fortify(mx)
+head(sub)
+
+class(sub)
+
+df <- mx@data
+
+
+mx@data$GMI_ADMIN == "Michoacan"
 
 
 
@@ -64,6 +80,26 @@ spplot(mx , zcol = "ADMIN_NAME")
 ```
 
 
+
+
+
+
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
 
 
 
