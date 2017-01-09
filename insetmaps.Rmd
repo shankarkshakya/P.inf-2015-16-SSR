@@ -1,0 +1,85 @@
+---
+title: "inset_maps_MX"
+author: "Shankar K Shakya"
+date: "January 6, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=TRUE, fig.align="center", fig.height=12, fig.width=12}
+
+rm(list = ls())
+library(ggplot2)
+library(raster)
+library(gridExtra)
+library(grid)
+library(maptools)
+
+mx <- readShapePoly("mexstates/mexstates.shp")
+
+new <- mx[grep("Mexico|Tlaxcala|Michoacan", mx@data$ADMIN_NAME),]
+class(new)
+
+states <- coordinates(new)
+states <- data.frame(states)
+states$label <- new@data$ADMIN_NAME
+
+site <- read.csv("Dgeo_MX.csv", header = TRUE)
+colnames(site) <- c("label", "X2", "X1")
+states <- rbind(states, site[c(3,1,2)])
+#states[2:3,3] <- NA
+
+
+pol <- data.frame(xmin=-103.7455,xmax=-97.61348 ,ymin=17.92083 ,ymax=20.39417)
+
+library(RColorBrewer)
+mycol <- brewer.pal(8, "Dark2")
+
+p1 <- ggplot() + geom_polygon(data = new, aes(long,lat, group = group)) +
+      geom_polygon(data=new, aes(long,lat, group=group), colour = "grey10", fill = "#fff7bc") +
+      geom_point(data = states, aes(x=X1, y=X2, color = label), size = 3) +
+      scale_color_manual(values = mycol) + 
+      coord_equal() + 
+      theme_bw() + 
+      xlab("")+ylab("") 
+
+
+
+
+p1
+
+p2 <- ggplot()+geom_polygon(data=mx, aes(long,lat,group=group),colour="grey10",fill="#fff7bc") +
+  coord_equal()+theme_bw()+labs(x="Longitude",y = "Latitude") + 
+  geom_rect(data = pol, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), alpha=0, colour="red", size = 1, linetype = 1) 
+  
+p2
+
+
+grid.newpage()
+v1 <- viewport(width = 1, height = 1, x = 0.5, y = 0.7) #plot area for the main map
+v2 <- viewport(width = 0.7, height = 0.7, x = 0.4, y = 0.25) #plot area for the inset map
+print(p1,vp=v1) 
+print(p2,vp=v2)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
