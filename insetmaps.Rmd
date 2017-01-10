@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ---
 title: "inset_maps_MX"
 author: "Shankar K Shakya"

@@ -52,8 +52,6 @@ unbiased <- poppr(diploid_pinf, uSimp = uSimp)
 #write.csv(unbiased, "summary_by_pop.csv", quote = FALSE)
 
 
-
-
 ```
 
 
@@ -65,7 +63,7 @@ unbiased <- poppr(diploid_pinf, uSimp = uSimp)
 
 ia_Pinf <- poppr(diploid_pinf, clonecorrect = TRUE, strata = ~Pop, sample = 999)
 ia_Pinf
-write.csv(ia_Pinf, "ia_Pinf.csv")
+#write.csv(ia_Pinf, "ia_Pinf.csv")
 # ia_Pinf <- last_plot()
 # 
 # ia_Pinf <- ia_Pinf + theme(text = element_text(size = rel(5))) +
@@ -85,6 +83,7 @@ poppr(diploid_pinf_no_sangeronimo2016, clonecorrect = TRUE, strata = ~Pop, sampl
 ```{r}
 
 library(pegas)
+
 hwe_per_pop <- seppop(diploid_pinf) %>% lapply(hw.test, B = 0)
 per_pop_mat <- sapply(hwe_per_pop, "[", i = TRUE, j = 3)
 alpha <- 0.05
@@ -108,11 +107,14 @@ library(strataG)
 diploid_pinf.gtypes <- genind2gtypes(clonecorrect(diploid_pinf))
 allelicRichness(diploid_pinf.gtypes)
 
-# library(PopGenReport)
-# allleic_rich <- allel.rich(diploid_pinf_cc)
-# 
-# rowSums(allleic_rich$all.richness) 
-# rowSums(allleic_rich$pop.sizes)
+library(PopGenReport)
+allleic_rich <- allel.rich(diploid_pinf)
+
+allelic_richness.df <- as.data.frame(allleic_rich$sum.richness)
+colnames(allelic_richness.df) <- "Mean allelic richness"
+
+ggplot(data = allelic_richness.df, aes(x = rownames(allelic_richness.df), y = "Mean allelic richness")) + 
+  geom_bar(stat = 'identity')
 
 summarizeLoci(diploid_pinf.gtypes)
 
@@ -124,13 +126,6 @@ locus_table(cc_P.inf, pop = "San Gerónimo")
 locus_table(cc_P.inf, pop = "Juchitepec")
 locus_table(cc_P.inf, pop = "Toluca")
 locus_table(cc_P.inf, pop = "Tlaxcala")
-
-
-
-
-
-
-
 
 
 ```
@@ -166,9 +161,11 @@ t <-   t + theme_minimal() +  theme(panel.grid.major = element_blank(), panel.gr
 t
 
 
-# x <- load("diploid_pinf_str.RData")
+# x <- load("structure_except_chapingo.RData")
 # y <- get(x)
-
+# evno <- evanno(sr, plot = T)
+# qmat2 <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 10000)
+# structurePlot(qmat2)
 
 
 ```
@@ -195,7 +192,7 @@ plot(y)
 ## Population structure test
 
 ```{r}
-library(strataG)
+
 diploid_pinf_no_sangeronimo2016 <- popsub(diploid_pinf, blacklist = "San Gerónimo_2016")
 
 diploid_pinf_no_sangeronimo2016
@@ -206,24 +203,20 @@ gst_mat <- pairwise_gst$pair.mat$Gst
 
 gst_mat[upper.tri(gst_mat)] <- NA
 
-gst_mat <- as.dist(gst_mat)
+fst_mat <- as.dist(gst_mat)
 
+geodist <- read.table("geo.txt")
+geodist_mat <- as.dist(geodist)
 
-geodist <- read.csv("geo.csv", header = TRUE, check.names = FALSE)
-
-geo_mat <- as.matrix(geodist[,-1])
-row.names(geo_mat) <- geodist[, 1]
-geodist_mat <- as.dist(geo_mat)
-
-ibd <- mantel.randtest(gst_mat, geodist_mat)
+ibd <- mantel.randtest(fst_mat, geodist_mat)
 plot(ibd)
 
 library(MASS)
-dens <- kde2d(geodist_mat,gst_mat, n=300)
+dens <- kde2d(fst_mat, geodist_mat n=300)
 myPal <- colorRampPalette(c("white","blue","gold", "orange", "red"))
-plot(geodist_mat, gst_mat, pch=20,cex=1.5)
+plot(Dgeo, Dgen, pch=20,cex=.5)
 image(dens, col=transp(myPal(300),.7), add=TRUE)
-abline(lm(gst_mat~geodist_mat))
+abline(lm(Dgen~Dgeo))
 title("Isolation by distance plot")
 
 ```
@@ -340,4 +333,29 @@ plot_poppr_msn(diploid_pinf_cc,
 
 
 ```
+
+
+## Hexp vs altitude
+```{r}
+
+alt_data <- read.csv("GST_altitude.csv")
+class(alt_data)
+
+ggplot(data = alt_data, aes(x = Altitude, y = Hexp)) + geom_point()
+
+ln_reg <- lm(Hexp ~ Altitude, data = alt_data)
+summary(ln_reg)
+
+
+```
+
+
+
+
+
+
+
+
+
+
 
