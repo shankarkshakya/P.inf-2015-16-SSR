@@ -103,25 +103,39 @@ hwe_plot
 
 ```{r}
 
-library(strataG)
-diploid_pinf.gtypes <- genind2gtypes(clonecorrect(diploid_pinf))
-allelicRichness(diploid_pinf.gtypes)
+# library(strataG)
+# diploid_pinf.gtypes <- genind2gtypes(clonecorrect(diploid_pinf))
+# allelicRichness(diploid_pinf.gtypes)
+# summarizeLoci(diploid_pinf.gtypes)
 
 library(PopGenReport)
 allleic_rich <- allel.rich(diploid_pinf)
 
-allelic_richness.df <- as.data.frame(allleic_rich$sum.richness)
-colnames(allelic_richness.df) <- "Mean allelic richness"
+allelic_richness <- allleic_rich$all.richness
+allelic_richness <- as.data.frame(apply(richness, MARGIN = 2, mean))
+colnames(allelic_richness) <- "Allelic richness"
 
-ggplot(data = allelic_richness.df, aes(x = rownames(allelic_richness.df), y = "Mean allelic richness")) + 
-  geom_bar(stat = 'identity')
 
-summarizeLoci(diploid_pinf.gtypes)
+sum_richness.df <- as.data.frame(allleic_rich$sum.richness)
+colnames(sum_richness.df) <- "Sum richness"
+
+allelic_summary <- cbind(allelic_richness, sum_richness.df)
+
+# ggplot(data = allelic_summary, aes(x = rownames(allelic_richness.df), y = "Sum richness")) + 
+#   geom_bar(stat = 'identity')
+
+
+
+
+
+
+
+
 
 
 
 #Allelic diversity for each locus and each population
-locus_table(diploid_pinf, pop = "Chapingo_2015")
+locus_table(diploid_pinf, pop = "Michoacan_2001_2010")
 locus_table(cc_P.inf, pop = "San Gerónimo")
 locus_table(cc_P.inf, pop = "Juchitepec")
 locus_table(cc_P.inf, pop = "Toluca")
@@ -285,10 +299,10 @@ P.infx <- xvalDapc(tab(diploid_pinf, NA.method = "mean"), pop(diploid_pinf),
 
 library(RColorBrewer)
 
-myCol <- brewer.pal(nPop(diploid_pinf), "Dark2") %>% setNames(popNames(diploid_pinf))
+myCol <- brewer.pal(nPop(diploid_pinf), "Paired") %>% setNames(popNames(diploid_pinf))
 
 scatter(P.infx$DAPC, col=myCol, clabel = 0.75, pch=15:18, scree.pca = TRUE, scree.da = FALSE, 
-        posi.pca = "bottomright", posi.leg = "topright", legend = TRUE, 
+        posi.pca = "bottomright", posi.leg = NULL, legend = TRUE, 
         cleg = 0.9, inset.solid = 1, xax = 1, yax = 2, cex.lab = 1, cex = 1.5, solid = 1, cstar = 0)
 
 
