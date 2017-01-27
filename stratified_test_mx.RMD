@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 library(poppr)
 
-P.inf <- read.genalex("all_2015_2016_mx.csv", ploidy = 4)
+#P.inf <- read.genalex("all_2015_2016_mx.csv", ploidy = 4)
 P.inf <- read.genalex("new.csv", ploidy = 4)
 P.inf
 
@@ -24,8 +24,7 @@ P.inf
 #setPop(P.inf) <- ~Region
 # P.inf
 
-ploidy_tab <- info_table(P.inf, type = "ploidy")
-
+ploidy_tab <- info_table(P.inf, type = "ploidy", plot = TRUE)
 mat_sum <- rowSums(ploidy_tab > 2, na.rm = TRUE)
 
 diploid_pinf <- P.inf[mat_sum == 0]
@@ -62,6 +61,13 @@ ggplot(data = unbiased, aes(x = Pop, y = Hexp)) + geom_bar(stat = "identity")
 
 
 
+
+p3 <- popsub(P.inf, sublist = c("Michoacan_2001/2008", "Toluca_1997" , "Tlaxcala_2007"))
+
+info_table(p3, type = "ploidy", plot = TRUE)
+
+
+
 ```
 
 
@@ -71,7 +77,7 @@ ggplot(data = unbiased, aes(x = Pop, y = Hexp)) + geom_bar(stat = "identity")
 ```{r}
 
 
-ia_Pinf <- poppr(diploid_pinf, clonecorrect = TRUE, strata = ~Region, sample = 999)
+ia_Pinf <- poppr(diploid_pinf, clonecorrect = TRUE, strata = ~Region, sample = 999, quiet = TRUE)
 ia_Pinf
 #write.csv(ia_Pinf, "del.csv")
 # ia_Pinf <- last_plot()
@@ -213,26 +219,36 @@ sr <- get(x)
 evno <- evanno(sr, plot = T)
 
 qmat2 <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 10000)
-t1 <- structurePlot(qmat2,  horiz = F)
-
 qmat3 <- clumpp(sr, k = 3, sim.stat = "g.prime", repeats = 10000)
-
-t2 <- structurePlot(qmat3,  horiz = F)
-
 qmat4 <- clumpp(sr, k = 4, sim.stat = "g.prime", repeats = 10000)
-t3 <- structurePlot(qmat4,  horiz = F)
-
 qmat5 <- clumpp(sr, k = 5, sim.stat = "g.prime", repeats = 10000)
-t4 <- structurePlot(qmat5,  horiz = F)
 
-library(cowplot)
-final <- plot_grid(t1, t2, t3, t4, nrow = 4, ncol = 1)
+qmat_list <- list(qmat2, qmat3, qmat4, qmat5)
 
-final +  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  theme(axis.title.y = element_blank()) 
+for (k in 1:length(qmat_list)){
+  temp <- qmat_list[[k]]
+  temp$orig.pop <- factor(temp$orig.pop, levels = unique(temp$orig.pop)[c(6,4,1,3,2,5)], ordered = TRUE)
+  qmat_list[[k]] <- temp
   
+}
+
+plots <- lapply(qmat_list, structurePlot, horiz = F)
+library(cowplot)
+plot_grid(plotlist = plots, nrow = 4, ncol = 1) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
 
 
+# t1 <- structurePlot(qmat2,  horiz = F)
+# t2 <- structurePlot(qmat3,  horiz = F)
+# t3 <- structurePlot(qmat4,  horiz = F)
+# t4 <- structurePlot(qmat5,  horiz = F)
+# 
+# library(cowplot)
+# final <- plot_grid(t1, t2, t3, t4, nrow = 4, ncol = 1)
+# 
+# final +  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+#   theme(axis.title.y = element_blank()) 
+#   
 
 ```
 
