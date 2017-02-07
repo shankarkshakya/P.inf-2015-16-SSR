@@ -46,3 +46,9 @@ GeoDistanceInMetresMatrix <- function(df.geopoints){
   
   return(mat.distances)
 }
+
+
+
+# x <- read.csv("Dgeo_MX.csv")
+# colnames(x) <- c("name", "lat", "lon")
+# GeoDistanceInMetresMatrix(x)
