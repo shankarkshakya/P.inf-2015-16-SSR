@@ -1,0 +1,381 @@
+---
+title: "Untitled"
+author: "Shankar K Shakya"
+date: "January 27, 2017"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width = 12, fig.height = 12, echo = F, warning = F, message = F, verbose = F)
+
+
+```
+
+##Phytophthora infestans diversity in three states of Mexico. Locus D13 is removed because of high percentage of missing values and all analysis is done on diploid genotypes. Data from Wang et.al 2016 (Mch, Toluca and Tlaxcala) is added to our new dataset of 2015/16.
+
+```{r, echo=FALSE}
+
+rm(list = ls())
+library(poppr, quietly = TRUE)
+
+P.inf <- read.genalex("new.csv", ploidy = 4)
+
+source("multiploid2diploid.R")
+diploid_pinf <- multiploid2diploid(P.inf, to = 2)
+info_table(diploid_pinf, type = "missing", plot = T)
+diploid_pinf <- missingno(diploid_pinf, type = "loci", cutoff = 0.07)
+
+splitStrata(diploid_pinf) <- ~Region/Year
+setPop(diploid_pinf) <- ~Region
+
+# Corrected simpson diversity index
+uSimp <- function(x){
+  lambda <- vegan::diversity(x, "simpson")
+  x <- drop(as.matrix(x))
+  if (length(dim(x)) > 1){
+    N <- rowSums(x)
+  } else {
+    N <- sum(x)
+  }
+  return((N/(N-1))*lambda)
+}
+
+
+unbiased <- poppr(diploid_pinf, uSimp = uSimp)
+
+unbiased <- unbiased[, c(1,2,3,4,9,10,11)]
+colnames(unbiased) <- c("Region", "N", "MLG", "eMLG", "E5", "Corrected lambda", "Hexp")
+unbiased <- unbiased[c(6,1,4,3,2,5), ]
+rownames(unbiased) <- NULL
+
+
+library(knitr)
+kable(unbiased, digits = 2,
+      align = c("c"),
+      caption = "Table xx. P. infestans sampling locations in Mexico and population statistics for diploid genotypes based on eleven SSR loci.  Total number of samples (N), observed multilocus genotype (MLG), expected multilocus genotype (eMLG), eveness (E5), corrrected Simpson's diversity index (Corrected lambda) and expected heterozygosity (Hexp)")
+
+
+library(ggplot2)
+
+unbiased$Region <- factor(unbiased$Region, levels = unbiased$Region)
+
+ggplot(data = unbiased, aes(x = Region, y = Hexp, fill = Region)) + geom_bar(stat = "identity")
+
+```
+
+
+##TEST FOR LINKAGE DISEQUILIBRIUM
+
+```{r}
+
+
+ia_Pinf <- poppr(diploid_pinf, clonecorrect = TRUE, strata = ~Region, sample = 999, quiet = TRUE)
+ia_Pinf <- ia_Pinf[,c(1:3,13:14)]  
+colnames(ia_Pinf) <- c("Region", "N", "MLG", "rbarD", "P-value")
+
+
+```
+
+
+##Hardy-Weinberg equilibrium
+
+```{r}
+
+library(pegas)
+
+diploid_pinf_cc <- clonecorrect(diploid_pinf)
+hwe_per_pop <- seppop(diploid_pinf_cc) %>% lapply(hw.test, B = 1000)
+per_pop_mat <- sapply(hwe_per_pop, "[", i = TRUE, j = 3)
+alpha <- 0.05
+per_pop_mat[per_pop_mat > alpha] <- 1
+
+
+library(lattice)
+
+hwe_plot <- levelplot(per_pop_mat, xlab = "Locus", ylab = "Population")
+hwe_plot
+
+num_loci_hwe <- per_pop_mat
+num_loci_hwe[num_loci_hwe != 1] <- 0
+num_loci_hwe <- colSums(num_loci_hwe)
+
+
+ia_Pinf <- ia_Pinf[-7, ]
+ia_Pinf <- cbind(ia_Pinf, num_loci_hwe) 
+ia_Pinf <- ia_Pinf[c(6,1,4,3,2,5), ]
+rownames(ia_Pinf) <- NULL
+colnames(ia_Pinf[6]) <- "Number of loci under HWE"
+ 
+kable(ia_Pinf, 
+      digits = 2,
+      align = c("c"),
+      caption = "Table xxx. Standardized index of association (rbarD), a measure of linkage disequilibrium among loci, and number of loci under Hardy-Weinberg equilibrium on diploid clone corrected dataset of P.infestans based on eleven SSR markers")
+
+
+
+```
+
+
+## STRUCTURE
+```{r, eval=FALSE, include=FALSE}
+
+library(strataG)
+Sys.setenv(PATH = paste("C:/Program Files (x86)/Structure2.3.4/bin", Sys.getenv("PATH"), sep = ";"))
+Sys.setenv(PATH = paste("C:/Users/Shankar/Downloads/CLUMPP_Windows.1.1.2/", Sys.getenv("PATH"), sep = ";"))
+
+str_data <- load("new_diploid_pinf_str_byregion_exceptD13locus_admix.RData")
+sr <- get(str_data)
+
+evno <- evanno(sr, plot = T)
+
+
+qmat2 <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 1000)
+qmat3 <- clumpp(sr, k = 3, sim.stat = "g.prime", repeats = 1000)
+qmat4 <- clumpp(sr, k = 4, sim.stat = "g.prime", repeats = 1000)
+qmat5 <- clumpp(sr, k = 5, sim.stat = "g.prime", repeats = 1000)
+qmat6 <- clumpp(sr, k = 6, sim.stat = "g.prime", repeats = 1000)
+
+qmat_list <- list(qmat2, qmat3, qmat4, qmat5, qmat6)
+
+
+# for (k in 1:length(qmat_list)){
+#   temp <- qmat_list[[k]]
+#   temp$orig.pop <- factor(temp$orig.pop, levels = unique(temp$orig.pop)[c(9,11,4,1,6,2,7,3,8,5,10)], ordered = TRUE)
+#   qmat_list[[k]] <- temp
+# 
+# }
+
+for (k in 1:length(qmat_list)){
+  temp <- qmat_list[[k]]
+  temp$orig.pop <- factor(temp$orig.pop, levels = unique(temp$orig.pop)[c(6,1,4,3,2,5)], ordered = TRUE)
+  qmat_list[[k]] <- temp
+  
+}
+
+plots <- lapply(qmat_list, structurePlot, horiz = FALSE)
+new_plots <- plots
+
+for (k in 1:length(plots)){
+ temp <- plots[[k]] +  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+ new_plots[[k]] <- temp
+  
+}
+
+library(cowplot)
+plot_grid(plotlist = new_plots, nrow = 3, ncol = 2, hjust = 1) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+```
+
+
+## Discriminant Analysis of Principal Components
+
+```{r}
+
+# set.seed(999)
+# P.infx <- xvalDapc(tab(diploid_pinf, NA.method = "mean"), pop(diploid_pinf))
+
+set.seed(999)
+P.infx <- xvalDapc(tab(diploid_pinf, NA.method = "mean"), pop(diploid_pinf),
+                   n.pca = 60:70,  n.rep = 100, 
+                   parallel = "multicore", ncpus = 4L)
+
+
+library(RColorBrewer)
+
+myCol <- brewer.pal(nPop(diploid_pinf), "Dark2") %>% setNames(popNames(diploid_pinf))
+
+scatter(P.infx$DAPC, col=myCol, clabel = 0.75, pch=15:19, scree.pca = TRUE, scree.da = FALSE, 
+        posi.pca = "bottomright", posi.leg = "topright", legend = TRUE, 
+        cleg = 0.9, inset.solid = 1, xax = 1, yax = 2, cex.lab = 1, cex = 1.5, solid = 1, cstar = 0)
+
+
+diploid_pinf_no_MCH <- popsub(diploid_pinf, blacklist = "Michoacan")
+
+set.seed(999)
+P.infx <- xvalDapc(tab(diploid_pinf_no_MCH, NA.method = "mean"), pop(diploid_pinf_no_MCH),
+                   n.pca = 60:70,  n.rep = 100, 
+                   parallel = "multicore", ncpus = 4L)
+
+scatter(P.infx$DAPC, col=myCol, clabel = 0.75, pch=15:19, scree.pca = TRUE, scree.da = FALSE, 
+        posi.pca = "bottomright", posi.leg = "topright", legend = TRUE, 
+        cleg = 0.9, inset.solid = 1, xax = 1, yax = 2, cex.lab = 1, cex = 1.5, solid = 1, cstar = 0)
+
+```
+
+
+
+## Analysis of molecular variance
+```{r}
+
+repeat_length <- c(2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2)
+bruvodist <- bruvo.dist(clonecorrect(diploid_pinf), replen = repeat_length)
+
+amv <- poppr.amova(diploid_pinf, 
+                   hier = ~Region, 
+                   clonecorrect = TRUE, 
+                   dist = bruvodist,
+                   within = F)
+
+
+myamv <- amv$results
+myamv <- cbind(myamv, amv$componentsofcovariance$`%`)
+ncol(myamv)
+colnames(myamv) <- c("df", "SS", "MSS", "% variance")
+
+knitr::kable(myamv, digits = 2,
+             caption = "Table xxx. Analysis of Molecular Variance for clone corrected diploid P. infestans based on Bruvo’s distance ")
+
+
+```
+
+
+## Pairwise FST test
+```{r}
+
+diploid_pinf_cc <- clonecorrect(diploid_pinf)
+
+library(strataG)
+gen2gtype <- function (x) {
+  
+  gen.mat <- genind2df(x, usepop = TRUE, oneColPerAll = TRUE)
+  strata <- x@strata
+  rownames(strata) <- rownames(gen.mat)
+  x@strata <- strata
+  gen.mat[gen.mat == "NA"] <- NA
+  has.pop <- !is.null(x@pop)
+  df2gtypes(x = gen.mat, ploidy = x@ploidy[1], id.col = NULL, 
+            strata.col = if (has.pop) 
+              1
+            else NULL, loc.col = if (has.pop) 
+              2
+            else 1, 
+            schemes = x@strata,  other = other(x))
+}
+
+diploid_pinf_cc.g <- gen2gtype(diploid_pinf_cc)
+
+pairwise_fst <- pairwiseTest(diploid_pinf_cc.g, stats = "fst", nrep = 10000)
+
+fst_mat <- pairwise_fst$pair.mat$Fst
+fst_mat[upper.tri(fst_mat)] <- t(fst_mat)[upper.tri(fst_mat)]
+fst_mat[is.na(fst_mat)] <- 0
+
+new_fst_mat <- fst_mat
+plot(nj(dist(new_fst_mat)))
+heatmap(new_fst_mat)
+plot(hclust(dist(new_fst_mat)))
+
+
+library(reshape2)
+fst_mat[upper.tri(fst_mat)] <- NA
+lower_tri <- melt(fst_mat, na.rm = TRUE)
+
+library(ggplot2)
+ggheatmap <- ggplot(lower_tri, aes(x = Var1, y = Var2, fill = value)) + geom_tile(color = "white") + 
+  scale_fill_gradient(low = "green", high = "red" , space = "Lab", name="Pairwise FST") + theme_minimal() + 
+   theme(axis.text.x = element_text(angle = 90, vjust = 1, size = 12, hjust = 1)) + coord_fixed() +
+  labs(x = "Population", y = "Population") +
+  theme(axis.text.y = element_text(size = 12)) +
+  theme(axis.title = element_text(size = 12)) +
+  geom_text(aes(label = round(value, 2)))
+
+ggheatmap
+
+
+kable(fst_mat, digits = 2,
+      caption = "Table xx. Pairwise FST values (lower triangle) for diploid P.infestans genotypes from regions of Mexico using eleven SSR markers. Upper triangle represents the associated P-value for pairwise comparisons based on 10,000 permutation replicates.")
+
+
+```
+
+
+
+```{r}
+#library(adegenet)
+
+## DETECTION WITH BIC (clear result)
+foo.BIC <- find.clusters(diploid_pinf, n.pca=100, choose=FALSE)
+plot(foo.BIC$Kstat[1:10], type="o", xlab="number of clusters (K)", ylab="BIC",
+col="blue", main="Detection based on BIC")
+points(2, foo.BIC$Kstat[2], pch="x", cex=3)
+mtext(3, tex="'X' indicates the actual number of clusters")
+
+## DETECTION WITH AIC (less clear-cut)
+foo.AIC <- find.clusters(diploid_pinf, n.pca=100, choose=FALSE, stat="AIC")
+plot(foo.AIC$Kstat[1:10], type="o", xlab="number of clusters (K)",
+ylab="AIC", col="purple", main="Detection based on AIC")
+points(2, foo.AIC$Kstat[2], pch="x", cex=3)
+mtext(3, tex="'X' indicates the actual number of clusters")
+
+
+## DETECTION WITH WSS (less clear-cut)
+foo.WSS <- find.clusters(diploid_pinf, n.pca=100, choose=FALSE, stat="WSS")
+plot(foo.WSS$Kstat[1:10], type="o", xlab="number of clusters (K)", ylab="WSS
+(residual variance)", col="red", main="Detection based on WSS")
+points(2, foo.WSS$Kstat[2], pch="x", cex=3)
+mtext(3, tex="'X' indicates the actual number of clusters")
+
+
+```
+
+```{r}
+
+library(hierfstat)
+source("FIS.R")
+
+fis(diploid_pinf)
+
+```
+
+
+## Isolation by distance
+```{r}
+
+lat_lon <- read.csv("Dgeo_MX.csv")
+colnames(lat_lon) <- c("name", "lat", "lon")
+source("GeoDistanceInMetresMatrix.R")
+
+geodist_mat <- GeoDistanceInMetresMatrix(lat_lon) / 1000
+geodist_mat <- as.dist(geodist_mat)
+
+fstdist_mat <- as.dist(new_fst_mat)
+
+ibd <- mantel.randtest(fstdist_mat, geodist_mat)
+plot(ibd)
+ibd
+
+
+# library(MASS)
+# dens <- kde2d(fstdist_mat, geodist_mat, n=300)
+# myPal <- colorRampPalette(c("white","blue","gold", "orange", "red"))
+# plot(fstdist_mat, geodist_mat, pch=20,cex=.5)
+# image(dens, col=transp(myPal(300),.7), add=TRUE)
+# abline(lm(geodist_mat~fstdist_mat))
+# title("Isolation by distance plot")
+
+plot(geodist_mat, fstdist_mat)
+
+abline(lm(fstdist_mat~geodist_mat))
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
