@@ -11,7 +11,7 @@ knitr::opts_chunk$set(fig.width = 12, fig.height = 12, echo = F, warning = F, me
 
 ```
 
-##Phytophthora infestans diversity in three states of Mexico. Locus D13 is removed because of high percentage of missing values and all analysis is done on diploid genotypes. Data from Wang et.al 2016 (Mch, Toluca and Tlaxcala) is added to our new dataset of 2015/16.
+### Phytophthora infestans diversity in three states of Mexico. Locus D13 is removed because of high percentage of missing values and all analysis is done on diploid genotypes. Data from Wang et.al 2016 (Mch, Toluca and Tlaxcala) is added to our new dataset of 2015/16.
 
 ```{r, echo=FALSE}
 
@@ -48,6 +48,8 @@ colnames(unbiased) <- c("Region", "N", "MLG", "eMLG", "E5", "Corrected lambda", 
 unbiased <- unbiased[c(6,1,4,3,2,5), ]
 rownames(unbiased) <- NULL
 
+#write.csv(unbiased, "diversity.csv"")
+
 
 library(knitr)
 kable(unbiased, digits = 2,
@@ -73,6 +75,14 @@ ia_Pinf <- poppr(diploid_pinf, clonecorrect = TRUE, strata = ~Region, sample = 9
 ia_Pinf <- ia_Pinf[,c(1:3,13:14)]  
 colnames(ia_Pinf) <- c("Region", "N", "MLG", "rbarD", "P-value")
 
+
+p <- last_plot()
+p
+p$data
+
+str(p)
+
+ggsave(p, filename = "ia.png", width = 7, height = 6)
 
 ```
 
@@ -116,14 +126,38 @@ kable(ia_Pinf,
 ```
 
 
-## STRUCTURE
+
 ```{r, eval=FALSE, include=FALSE}
+## STRUCTURE
 
 library(strataG)
 Sys.setenv(PATH = paste("C:/Program Files (x86)/Structure2.3.4/bin", Sys.getenv("PATH"), sep = ";"))
 Sys.setenv(PATH = paste("C:/Users/Shankar/Downloads/CLUMPP_Windows.1.1.2/", Sys.getenv("PATH"), sep = ";"))
 
-str_data <- load("new_diploid_pinf_str_byregion_exceptD13locus_admix.RData")
+gen2gtype <- function (x) {
+  
+  gen.mat <- genind2df(x, usepop = TRUE, oneColPerAll = TRUE)
+  strata <- x@strata
+  rownames(strata) <- rownames(gen.mat)
+  x@strata <- strata
+  gen.mat[gen.mat == "NA"] <- NA
+  has.pop <- !is.null(x@pop)
+  df2gtypes(x = gen.mat, ploidy = x@ploidy[1], id.col = NULL, 
+            strata.col = if (has.pop) 
+              1
+            else NULL, loc.col = if (has.pop) 
+              2
+            else 1, 
+            schemes = x@strata,  other = other(x))
+}
+
+diploid_pinf.g <- gen2gtype(diploid_pinf)
+
+sr <- structureRun(diploid_pinf.g, k.range  = 1:6, burnin = 20000, num.k.rep = 15, noadmix = F, numreps = 100000)
+
+#save(sr, file = "dip")
+
+str_data <- load("diploid_pinf_str_byregion_exceptD13locus_admix.RData")
 sr <- get(str_data)
 
 evno <- evanno(sr, plot = T)
@@ -133,9 +167,9 @@ qmat2 <- clumpp(sr, k = 2, sim.stat = "g.prime", repeats = 1000)
 qmat3 <- clumpp(sr, k = 3, sim.stat = "g.prime", repeats = 1000)
 qmat4 <- clumpp(sr, k = 4, sim.stat = "g.prime", repeats = 1000)
 qmat5 <- clumpp(sr, k = 5, sim.stat = "g.prime", repeats = 1000)
-qmat6 <- clumpp(sr, k = 6, sim.stat = "g.prime", repeats = 1000)
+# qmat6 <- clumpp(sr, k = 6, sim.stat = "g.prime", repeats = 1000)
 
-qmat_list <- list(qmat2, qmat3, qmat4, qmat5, qmat6)
+qmat_list <- list(qmat2, qmat3, qmat4, qmat5), qmat6)
 
 
 # for (k in 1:length(qmat_list)){
@@ -156,13 +190,13 @@ plots <- lapply(qmat_list, structurePlot, horiz = FALSE)
 new_plots <- plots
 
 for (k in 1:length(plots)){
- temp <- plots[[k]] +  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+ temp <- plots[[k]] +  theme(axis.text.x = element_text(face = "bold", size = 12))
  new_plots[[k]] <- temp
-  
+
 }
 
 library(cowplot)
-plot_grid(plotlist = new_plots, nrow = 3, ncol = 2, hjust = 1) +
+plot_grid(plotlist = new_plots, nrow = 4, ncol = 1, hjust = 1) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 
@@ -263,8 +297,14 @@ fst_mat[upper.tri(fst_mat)] <- t(fst_mat)[upper.tri(fst_mat)]
 fst_mat[is.na(fst_mat)] <- 0
 
 new_fst_mat <- fst_mat
+plot(ape::nj(as.dist(new_fst_mat)), type = "unrooted", edge.width = 2, rotate.tree = 240)
+add.scale.bar()
+
+plot(ape::nj(as.dist(new_fst_mat)), type = "phylogram")
+add.scale.bar()
+
 plot(nj(dist(new_fst_mat)))
-heatmap(new_fst_mat)
+#heatmap(new_fst_mat)
 plot(hclust(dist(new_fst_mat)))
 
 
@@ -291,7 +331,7 @@ kable(fst_mat, digits = 2,
 ```
 
 
-
+## Number of clusters based on BIC
 ```{r}
 #library(adegenet)
 
@@ -299,7 +339,9 @@ kable(fst_mat, digits = 2,
 foo.BIC <- find.clusters(diploid_pinf, n.pca=100, choose=FALSE)
 plot(foo.BIC$Kstat[1:10], type="o", xlab="number of clusters (K)", ylab="BIC",
 col="blue", main="Detection based on BIC")
-points(2, foo.BIC$Kstat[2], pch="x", cex=3)
+
+
+points(4, foo.BIC$Kstat[4], pch="x", cex=3)
 mtext(3, tex="'X' indicates the actual number of clusters")
 
 ## DETECTION WITH AIC (less clear-cut)
@@ -310,17 +352,27 @@ points(2, foo.AIC$Kstat[2], pch="x", cex=3)
 mtext(3, tex="'X' indicates the actual number of clusters")
 
 
-## DETECTION WITH WSS (less clear-cut)
-foo.WSS <- find.clusters(diploid_pinf, n.pca=100, choose=FALSE, stat="WSS")
-plot(foo.WSS$Kstat[1:10], type="o", xlab="number of clusters (K)", ylab="WSS
-(residual variance)", col="red", main="Detection based on WSS")
-points(2, foo.WSS$Kstat[2], pch="x", cex=3)
-mtext(3, tex="'X' indicates the actual number of clusters")
+# ## DETECTION WITH WSS (less clear-cut)
+# foo.WSS <- find.clusters(diploid_pinf, n.pca=100, choose=FALSE, stat="WSS")
+# plot(foo.WSS$Kstat[1:10], type="o", xlab="number of clusters (K)", ylab="WSS
+# (residual variance)", col="red", main="Detection based on WSS")
+# points(2, foo.WSS$Kstat[2], pch="x", cex=3)
+# mtext(3, tex="'X' indicates the actual number of clusters")
+
+
+
+test <- find.clusters(, n.pca = 100, 
+              stat = "BIC", choose.n.clust = F, criterion = "diffNgroup", max.n.clust = 10)
 
 
 ```
 
-```{r}
+
+```{r, eval=FALSE, include=FALSE}
+
+
+## Inbreeding coefficient : 
+### Measure of deviation from HWE. Measures differences in observed and expected heterozugosity, standardized by expected heterozygosity. FIS = 0 meaning pop is in HWE.
 
 library(hierfstat)
 source("FIS.R")
@@ -340,24 +392,70 @@ source("GeoDistanceInMetresMatrix.R")
 geodist_mat <- GeoDistanceInMetresMatrix(lat_lon) / 1000
 geodist_mat <- as.dist(geodist_mat)
 
+#new_fst_mat <- new_fst_mat/ (1 - new_fst_mat)
+
 fstdist_mat <- as.dist(new_fst_mat)
 
-ibd <- mantel.randtest(fstdist_mat, geodist_mat)
-plot(ibd)
+ibd <- mantel.randtest(fstdist_mat, geodist_mat, nrepet = 999)
+plot(ibd, main = "Mantel's test")
 ibd
 
-
 # library(MASS)
-# dens <- kde2d(fstdist_mat, geodist_mat, n=300)
+# dens <- kde2d(geodist_mat, fstdist_mat, n=300)
 # myPal <- colorRampPalette(c("white","blue","gold", "orange", "red"))
-# plot(fstdist_mat, geodist_mat, pch=20,cex=.5)
+# plot(geodist_mat, fstdist_mat, pch=20,cex=.5)
 # image(dens, col=transp(myPal(300),.7), add=TRUE)
-# abline(lm(geodist_mat~fstdist_mat))
+# abline(lm(fstdist_mat~geodist_mat))
 # title("Isolation by distance plot")
 
-plot(geodist_mat, fstdist_mat)
-
+plot(geodist_mat, fstdist_mat, xlab = "Geographical distance (km)", ylab = "Genetic distance (FST)", cex = 1.5, cex.lab = 1.2)
 abline(lm(fstdist_mat~geodist_mat))
+summary(lm(fstdist_mat~geodist_mat))
+
+##positive corelation but not significant enough. This explains partially the population structure.
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+```{r, eval=FALSE, include=FALSE}
+
+library(reshape2)
+library(dplyr)
+library(tidyr)
+
+
+diversity <- diversity_ci(diploid_pinf, n = 100L)
+CI <- melt(diversity[[3]]) %>% spread(CI, value) %>% rename(lb = `2.5 %`, ub = `97.5 %`)
+obs <- melt(diversity[[1]]) %>% rename(observed = value)
+
+
+dat <- merge(CI, obs)
+
+sim_div <- filter(dat, Index == "lambda")
+
+sim_div$Pop<- factor(sim_div$Pop, levels = sim_div$Pop[c(3,1,6,2,4,5,7)])
+
+ggplot(sim_div, aes(x = Pop, y = observed, color = Pop)) +
+geom_point(size = 5) +
+   geom_errorbar(aes(ymax = ub, ymin = lb), lwd = 1.25) +
+   theme(axis.text.x = element_text(hjust = 1, vjust = 0.5, angle = 60, size = 15)) +
+   theme(text = element_text(size = rel(5))) +
+   labs(title = "Simpson's diversity index") +
+   theme(plot.title = element_text(size = 35)) +
+    theme(legend.position = "none") +
+   labs(x = "Population", y = "Observed value")
 
 
 
@@ -367,12 +465,150 @@ abline(lm(fstdist_mat~geodist_mat))
 
 
 
+```{r, eval=FALSE, include=FALSE}
+
+## allelic richness
+
+# library(strataG)
+# diploid_pinf.gtypes <- genind2gtypes(clonecorrect(diploid_pinf))
+# allelicRichness(diploid_pinf.gtypes)
+# summarizeLoci(diploid_pinf.gtypes)
+
+library(PopGenReport)
+allleic_rich <- allel.rich(diploid_pinf)
+
+allelic_richness <- allleic_rich$all.richness
+allelic_richness <- as.data.frame(apply(allelic_richness, MARGIN = 2, mean))
+colnames(allelic_richness) <- "Allelic richness"
+
+
+sum_richness.df <- as.data.frame(allleic_rich$sum.richness)
+colnames(sum_richness.df) <- "Sum richness"
+
+allelic_summary <- cbind(allelic_richness, sum_richness.df)
+pri_alleles <- private_alleles(diploid_pinf)
+rowSums(pri_alleles > 0 )
+
+library(ggplot2)
+ggplot(allelic_summary, aes(rownames(allelic_summary), allelic_summary$`Sum richness`)) + geom_bar(stat = "identity") 
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+diploid_pinf_genpop <- genind2genpop(diploid_pinf)
+save(diploid_pinf_genpop, file = "diploid_pinf.gen")
+
+library(diveRsity)
+
+divMigrate("diploid_pinf.gen", stat ="d_jost")
+
+
+divMigrate("diploid_pinf_genpop.gen", stat ="d_jost")
+
+
+data(Test_data)
+
+
+Test_data
+
+divMigrate(infile = t(df), stat = "d_jost", plot_network = T)
+
+
+df <- genind2df(diploid_pinf)
+
+```
+
+
+```{r}
+
+
+## ggtree
+source("https://bioconductor.org/biocLite.R")
+biocLite("ggtree", type = "source")
+
+library(ggtree)
+library(ggrepel)
+
+
+diploid_pinf_cc <- clonecorrect(diploid_pinf)
+tree_nj <- bruvo.boot(diploid_pinf_cc, replen = repeat_length, 
+                   sample = 10, cutoff = 70, tree = "nj")
+
+mycol <- rainbow(6)
+mycol[2] <- "#000000"
+mycol <- mycol %>% setNames(popNames(diploid_pinf_cc))
+
+x <- apeBoot(tree_nj, tree_nj$node.label)
+strata <- dplyr::data_frame(taxa = indNames(diploid_pinf_cc)) %>% cbind(strata(diploid_pinf_cc)) 
+# tree_nj$tip.label <- as.character(strata$Region) 
+# 
+# plot(tree_nj,
+#             tip.color = mycol, show.node.label = TRUE, use.edge.length = F,
+#             edge.width = 2,
+#             align.tip.label = T,
+#             font = 2, adj = 1, label.offset = 1,
+#             main = "NJ tree.", cex = 0.65, node.pos = 1, type = "unrooted")
+
+
+test_tree <- ggtree(x, layout = "unrooted", branch.length = "none") +
+  ggtitle("NJ tree") +
+  geom_label_repel(aes(label = bootstrap, size = bootstrap),
+  nudge_x = -0.015, nudge_y = -0.005) +
+  scale_size(range = c(2, 4)) +
+  theme(plot.title = element_text(size = 30))
+  
+  
+final_tree <- test_tree %<+% strata +
+              geom_tippoint(aes(color = Region), size = 2) +
+              theme(legend.position = "right") +
+              theme(text = element_text(size = 18)) +
+              scale_color_manual(values = mycol) +
+              theme(legend.text = element_text(size = 20))
+          
+final_tree
+
+
+
+
+min_span_net <- bruvo.msn(diploid_pinf_cc, replen = repeat_length, 
+                          add = TRUE, loss = F, showplot = FALSE, 
+                          include.ties = FALSE)
+
+
+set.seed(99)
+plot_poppr_msn(diploid_pinf_cc,
+               min_span_net,
+               inds = "F",
+               mlg = FALSE,
+               gadj = 3,
+               nodebase = 1.15,
+               palette = mycol,
+               cutoff = NULL,
+               quantiles = FALSE,
+               beforecut = TRUE)
+
+
+tree_nj
 
 
 
 
 
 
+
+
+
+
+
+```
 
 
 
